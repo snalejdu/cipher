@@ -1,0 +1,597 @@
+<?php
+// Symbol Mapping
+$letters = range('A', 'Z');
+$symbols = ['!','@','#','$','%','^','&','*','(',')','-','+','=','{','}','[',']',':',';','<','>','?','/','~','`','_'];
+$letterToSymbol = array_combine($letters, $symbols);
+$symbolToLetter = array_flip($letterToSymbol);
+
+function caesarShift($text, $shift) {
+    $output = "";
+    foreach(str_split($text) as $char) {
+        if(ctype_alpha($char)) {
+            $base = ord('A');
+            $output .= chr((ord($char) - $base + $shift + 26) % 26 + $base);
+        } else {
+            $output .= $char;
+        }
+    }
+    return strtoupper($output);
+}
+
+$result = "";
+$key = isset($_POST['key']) ? (int)$_POST['key'] : 5;
+$mode = "";
+
+if(isset($_POST['encrypt'])) {
+    $mode = "encrypt";
+    $input = strtoupper($_POST['message']);
+    $shifted = caesarShift($input, $key);
+    foreach(str_split($shifted) as $char) {
+        if(isset($letterToSymbol[$char])) $result .= $letterToSymbol[$char];
+        elseif($char == " ") $result .= "|";
+    }
+}
+
+if(isset($_POST['decrypt'])) {
+    $mode = "decrypt";
+    $input = $_POST['message'];
+    $converted = "";
+    foreach(str_split($input) as $char) {
+        if(isset($symbolToLetter[$char])) $converted .= $symbolToLetter[$char];
+        elseif($char == "|") $converted .= " ";
+    }
+    $result = caesarShift($converted, -$key);
+}
+?>
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cipher — Symbol Encoder</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --glass:         rgba(255, 255, 255, 0.055);
+      --glass-hover:   rgba(255, 255, 255, 0.085);
+      --glass-deep:    rgba(0, 0, 0, 0.25);
+      --border:        rgba(255, 255, 255, 0.10);
+      --border-bright: rgba(255, 255, 255, 0.18);
+      --blur:          blur(28px) saturate(160%);
+      --shadow:        0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+      --shadow-sm:     0 4px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+
+      --accent:        #818cf8;
+      --accent-glow:   rgba(129, 140, 248, 0.25);
+      --green:         #4ade80;
+      --green-glow:    rgba(74, 222, 128, 0.2);
+      --red:           #f87171;
+      --red-glow:      rgba(248, 113, 113, 0.2);
+      --amber:         #fbbf24;
+      --amber-glow:    rgba(251, 191, 36, 0.18);
+
+      --text:          rgba(255,255,255,0.92);
+      --text-muted:    rgba(255,255,255,0.45);
+      --text-dim:      rgba(255,255,255,0.22);
+
+      --radius-card:   26px;
+      --radius-inner:  14px;
+      --radius-pill:   999px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      background: #080b14;
+      color: var(--text);
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ── Background mesh ── */
+    .bg-mesh {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 700px 500px at 10% 5%,  rgba(99,102,241,0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 500px 400px at 90% 20%, rgba(168,85,247,0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 600px 500px at 50% 90%, rgba(20,184,166,0.10) 0%, transparent 70%),
+        radial-gradient(ellipse 400px 300px at 85% 75%, rgba(236,72,153,0.08) 0%, transparent 70%);
+    }
+
+    /* Animated orbs */
+    .orb {
+      position: fixed; border-radius: 50%;
+      filter: blur(80px); pointer-events: none; z-index: 0;
+      animation: orbFloat 20s ease-in-out infinite;
+    }
+    .orb-1 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(99,102,241,0.22), transparent 65%); top: -150px; left: -100px; }
+    .orb-2 { width: 380px; height: 380px; background: radial-gradient(circle, rgba(168,85,247,0.16), transparent 65%); top: 35%; right: -80px; animation-delay: -8s; }
+    .orb-3 { width: 430px; height: 430px; background: radial-gradient(circle, rgba(20,184,166,0.12), transparent 65%); bottom: -100px; left: 25%; animation-delay: -14s; }
+    @keyframes orbFloat {
+      0%,100% { transform: translate(0,0)   scale(1); }
+      33%      { transform: translate(25px,-20px) scale(1.04); }
+      66%      { transform: translate(-18px,22px)  scale(0.97); }
+    }
+
+    /* Noise grain */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: .028;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 180px;
+    }
+
+    /* ── Layout ── */
+    .page-wrap {
+      position: relative; z-index: 2;
+      min-height: 100vh;
+      padding: 52px 16px 72px;
+    }
+
+    /* ── Glass card ── */
+    .glass-card {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--shadow);
+    }
+    .glass-card-inner {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-inner);
+      backdrop-filter: blur(12px);
+    }
+
+    /* ── Header ── */
+    .app-header { text-align: center; margin-bottom: 32px; }
+
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(74,222,128,0.08);
+      border: 1px solid rgba(74,222,128,0.22);
+      border-radius: var(--radius-pill);
+      backdrop-filter: blur(16px);
+      padding: 5px 16px;
+      font-size: 10.5px; font-weight: 600;
+      letter-spacing: .09em; text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 18px;
+    }
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: blink 2.5s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+    .app-title {
+      font-size: clamp(30px, 6vw, 44px);
+      font-weight: 700;
+      letter-spacing: -.035em;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #fff 20%, rgba(255,255,255,0.4) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .app-subtitle {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      font-weight: 300;
+      margin-top: 7px;
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 10.5px; font-weight: 700;
+      letter-spacing: .09em; text-transform: uppercase;
+      color: var(--text-dim); padding-left: 2px;
+    }
+
+    /* ── Textarea ── */
+    .glass-textarea {
+      background: rgba(0,0,0,0.2) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: var(--radius-inner) !important;
+      color: var(--text) !important;
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      resize: none;
+      line-height: 1.65;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .glass-textarea::placeholder { color: var(--text-dim) !important; }
+    .glass-textarea:focus {
+      border-color: rgba(129,140,248,.5) !important;
+      box-shadow: 0 0 0 3.5px rgba(129,140,248,.1) !important;
+      background: rgba(0,0,0,0.28) !important;
+      outline: none !important;
+    }
+
+    .char-badge {
+      font-size: 11px; color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Key row ── */
+    .key-row {
+      display: flex; align-items: center; gap: 14px;
+      background: rgba(0,0,0,0.18);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-inner);
+      padding: 12px 16px;
+    }
+    .key-icon-wrap {
+      width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+      background: linear-gradient(145deg, #6366f1, #4f46e5);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 16px;
+      box-shadow: 0 4px 14px rgba(99,102,241,.45), inset 0 1px 0 rgba(255,255,255,.2);
+    }
+    .key-label { font-size: 13.5px; color: var(--text-muted); font-weight: 400; flex: 1; }
+    .key-label small { font-size: 10.5px; color: var(--text-dim); }
+
+    .key-num-input {
+      width: 80px;
+      background: rgba(255,255,255,0.06) !important;
+      border: 1px solid var(--border-bright) !important;
+      border-radius: 11px !important;
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 17px; font-weight: 600;
+      color: var(--text) !important;
+      padding: 8px 10px;
+      -moz-appearance: textfield;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .key-num-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .key-num-input:focus {
+      border-color: rgba(129,140,248,.55) !important;
+      box-shadow: 0 0 0 3px rgba(129,140,248,.12) !important;
+      outline: none !important;
+    }
+
+    /* ── Separator ── */
+    .inner-sep {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-bright), transparent);
+      margin: 20px 0;
+    }
+
+    /* ── Buttons ── */
+    .btn-cipher {
+      width: 100%; border: none;
+      border-radius: var(--radius-inner);
+      padding: 14px 10px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 14.5px; font-weight: 600;
+      letter-spacing: -.01em;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: transform .15s, opacity .15s, box-shadow .2s;
+    }
+    .btn-cipher::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,.12) 0%, transparent 55%);
+      pointer-events: none;
+    }
+    .btn-cipher:hover  { transform: translateY(-2px); }
+    .btn-cipher:active { transform: scale(.97); opacity: .85; }
+
+    .btn-encrypt {
+      background: linear-gradient(145deg, #4ade80, #16a34a);
+      color: #fff;
+      box-shadow: 0 6px 24px var(--green-glow), inset 0 1px 0 rgba(255,255,255,.18);
+    }
+    .btn-encrypt:hover { box-shadow: 0 10px 32px rgba(74,222,128,.35), inset 0 1px 0 rgba(255,255,255,.18); }
+
+    .btn-decrypt {
+      background: linear-gradient(145deg, #f87171, #dc2626);
+      color: #fff;
+      box-shadow: 0 6px 24px var(--red-glow), inset 0 1px 0 rgba(255,255,255,.18);
+    }
+    .btn-decrypt:hover { box-shadow: 0 10px 32px rgba(248,113,113,.35), inset 0 1px 0 rgba(255,255,255,.18); }
+
+    /* ── Divider ── */
+    .glass-divider {
+      display: flex; align-items: center; gap: 14px;
+    }
+    .glass-divider::before, .glass-divider::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.1), transparent);
+    }
+    .glass-divider span {
+      font-size: 10.5px; font-weight: 700;
+      letter-spacing: .09em; text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    /* ── Result card ── */
+    .result-top {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .mode-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      border-radius: var(--radius-pill);
+      padding: 5px 13px;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: .06em; text-transform: uppercase; border: 1px solid;
+    }
+    .badge-encrypted { color: var(--green);  background: var(--green-glow);  border-color: rgba(74,222,128,.28); }
+    .badge-decrypted { color: var(--amber);  background: var(--amber-glow);  border-color: rgba(251,191,36,.28); }
+    .badge-idle      { color: var(--text-dim); background: transparent; border-color: var(--border); }
+
+    .result-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 17px; font-weight: 500;
+      line-height: 1.7; word-break: break-all;
+      color: var(--text); min-height: 32px;
+    }
+    .result-empty {
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px; font-style: italic;
+      font-weight: 300; color: var(--text-dim);
+    }
+
+    .btn-copy {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(129,140,248,.1);
+      border: 1px solid rgba(129,140,248,.28);
+      border-radius: 10px; padding: 6px 14px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 12px; font-weight: 600;
+      color: var(--accent); cursor: pointer;
+      transition: background .2s, transform .15s;
+      letter-spacing: .02em;
+    }
+    .btn-copy:hover { background: rgba(129,140,248,.2); transform: translateY(-1px); }
+    .btn-copy:active { transform: scale(.96); }
+
+    /* ── Cipher map ── */
+    .map-toggle-btn {
+      width: 100%;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 11px 20px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 12.5px; font-weight: 600;
+      color: var(--text-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background .2s, border-color .2s, color .2s;
+    }
+    .map-toggle-btn:hover { background: var(--glass-hover); border-color: var(--border-bright); color: var(--text); }
+    .map-toggle-btn .chevron { transition: transform .3s cubic-bezier(.4,0,.2,1); }
+    .map-toggle-btn.open .chevron { transform: rotate(180deg); }
+
+    .cipher-map-grid {
+      display: none;
+      grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+      gap: 8px;
+    }
+    .cipher-map-grid.open { display: grid; }
+
+    .map-cell {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 13px; padding: 10px 6px 9px;
+      text-align: center; cursor: default;
+      transition: background .2s, border-color .2s, transform .15s;
+    }
+    .map-cell:hover {
+      background: var(--glass-hover);
+      border-color: var(--border-bright);
+      transform: translateY(-2px);
+    }
+    .mc-letter { font-size: 10px; color: var(--text-dim); font-weight: 700; letter-spacing: .05em; }
+    .mc-sym    { font-size: 20px; line-height: 1.35; font-family: 'JetBrains Mono', monospace; color: var(--text); }
+
+    /* ── Footer ── */
+    .app-footer { font-size: 11px; color: var(--text-dim); text-align: center; }
+    .app-footer code {
+      background: rgba(255,255,255,.07);
+      border: 1px solid var(--border);
+      border-radius: 6px; padding: 1px 7px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Entrance animations ── */
+    .fade-up { animation: fadeUp .55s cubic-bezier(.22,1,.36,1) both; }
+    .d1 { animation-delay: .06s; }
+    .d2 { animation-delay: .12s; }
+    .d3 { animation-delay: .18s; }
+    .d4 { animation-delay: .24s; }
+    .d5 { animation-delay: .30s; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-mesh"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<div class="page-wrap">
+  <div class="container" style="max-width:500px;">
+
+    <!-- Header -->
+    <header class="app-header fade-up">
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        Cipher Active
+      </div>
+      <h2 class="app-title">Symbol Cipher | Karl Fritz Pagas</h2>
+      <p class="app-subtitle">Caesar shift &amp; symbol substitution encoder</p>
+    </header>
+
+    <!-- Main Card -->
+    <div class="glass-card p-4 mb-3 fade-up d1">
+      <form method="POST">
+
+        <!-- Message input -->
+        <div class="mb-1">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="section-label">Message</span>
+            <span class="char-badge" id="charCount">
+              <?php echo isset($_POST['message']) ? strlen($_POST['message']).' chars' : '0 chars'; ?>
+            </span>
+          </div>
+          <textarea
+            class="form-control glass-textarea"
+            name="message"
+            rows="4"
+            placeholder="Enter your message…"
+            oninput="document.getElementById('charCount').textContent = this.value.length + ' chars'"
+            required
+          ><?php echo isset($_POST['message']) ? htmlspecialchars($_POST['message']) : ''; ?></textarea>
+        </div>
+
+        <div class="inner-sep"></div>
+
+        <!-- Shift key -->
+        <div class="key-row mb-4">
+          <div class="key-icon-wrap">
+            <i class="bi bi-key-fill"></i>
+          </div>
+          <span class="key-label">Shift Key <small>(1–25)</small></span>
+          <input
+            type="number"
+            class="form-control key-num-input"
+            name="key"
+            value="<?php echo $key; ?>"
+            min="1" max="25"
+            required
+          >
+        </div>
+
+        <!-- Buttons -->
+        <div class="row g-2">
+          <div class="col-6">
+            <button type="submit" name="encrypt" class="btn-cipher btn-encrypt">
+              <i class="bi bi-lock-fill"></i> Encrypt
+            </button>
+          </div>
+          <div class="col-6">
+            <button type="submit" name="decrypt" class="btn-cipher btn-decrypt">
+              <i class="bi bi-unlock-fill"></i> Decrypt
+            </button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+
+    <!-- Divider -->
+    <div class="glass-divider my-3 fade-up d2">
+      <span>Result</span>
+    </div>
+
+    <!-- Result Card -->
+    <div class="glass-card p-4 mb-3 fade-up d3">
+      <div class="result-top">
+        <?php if($mode === 'encrypt'): ?>
+          <span class="mode-badge badge-encrypted">
+            <i class="bi bi-shield-lock-fill"></i> Encrypted
+          </span>
+        <?php elseif($mode === 'decrypt'): ?>
+          <span class="mode-badge badge-decrypted">
+            <i class="bi bi-shield-check-fill"></i> Decrypted
+          </span>
+        <?php else: ?>
+          <span class="mode-badge badge-idle">
+            <i class="bi bi-hourglass-split"></i> Awaiting
+          </span>
+        <?php endif; ?>
+
+        <?php if($result): ?>
+          <button class="btn-copy" onclick="copyResult(this)">
+            <i class="bi bi-clipboard"></i> Copy
+          </button>
+        <?php endif; ?>
+      </div>
+
+      <div class="result-text" id="resultText">
+        <?php if($result): ?>
+          <?php echo htmlspecialchars($result); ?>
+        <?php else: ?>
+          <span class="result-empty">Your output will appear here…</span>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <!-- Cipher Map -->
+    <div class="mb-3 fade-up d4">
+      <button class="map-toggle-btn" id="mapToggle" onclick="toggleMap()">
+        <i class="bi bi-table" style="font-size:13px;"></i>
+        <span id="mapLabel">Show Cipher Map</span>
+        <i class="bi bi-chevron-down chevron" style="font-size:12px;"></i>
+      </button>
+    </div>
+
+    <div class="cipher-map-grid mb-4 fade-up d5" id="cipherMapGrid">
+      <?php
+        $ml = range('A','Z');
+        $ms = ['!','@','#','$','%','^','&','*','(',')','-','+','=','{','}','[',']',':',';','<','>','?','/','~','`','_'];
+        foreach($ml as $i => $l):
+      ?>
+        <div class="map-cell">
+          <div class="mc-letter"><?php echo $l; ?></div>
+          <div class="mc-sym"><?php echo htmlspecialchars($ms[$i]); ?></div>
+        </div>
+      <?php endforeach; ?>
+    </div>
+
+    <!-- Footer -->
+    <p class="app-footer fade-up d5">
+      Space encodes as <code>|</code> &nbsp;·&nbsp; Shift range 1–25
+    </p>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  function copyResult(btn) {
+    const text = document.getElementById('resultText').innerText.trim();
+    if (!text || text.includes('will appear')) return;
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<i class="bi bi-check2-circle"></i> Copied!';
+      btn.style.color = '#4ade80';
+      btn.style.borderColor = 'rgba(74,222,128,.4)';
+      btn.style.background = 'rgba(74,222,128,.1)';
+      setTimeout(() => {
+        btn.innerHTML = orig;
+        btn.style.cssText = '';
+      }, 2200);
+    });
+  }
+
+  function toggleMap() {
+    const grid   = document.getElementById('cipherMapGrid');
+    const toggle = document.getElementById('mapToggle');
+    const label  = document.getElementById('mapLabel');
+    const isOpen = grid.classList.toggle('open');
+    toggle.classList.toggle('open', isOpen);
+    label.textContent = isOpen ? 'Hide Cipher Map' : 'Show Cipher Map';
+  }
+</script>
+</body>
+</html>
